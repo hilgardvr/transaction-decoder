@@ -1,5 +1,23 @@
 use std::io::Read;
+use std::fmt;
 
+struct Input {
+    txid: [u8; 32],
+    output_index: u32,
+    script_sig: Vec<u8>,
+    sequence: u32
+}
+
+impl fmt::Debug for Input {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Input")
+        .field("txid", &self.txid)
+        .field("output_index", &self.output_index)
+        .field("script_sig", &self.script_sig)
+        .field("sequence", &self.sequence)
+        .finish()
+    }
+}
 
 fn read_compact_size(transaction_bytes: &mut &[u8]) -> u64 {
     let mut compact_size = [0_u8; 1];
@@ -45,20 +63,26 @@ fn read_script(transaction_bytes: &mut &[u8]) -> Vec<u8> {
 }
 
 fn main() {
-    //let transaction_hex = "010000000242d5c1d6f730";
     let transaction_hex = "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff6403059d05e4b883e5bda9e7a59ee4bb99e9b1bcfabe6d6df3c53c3d9db8c2488121f2445e2665083387680896b4f9a69e0d3fd63334ac6510000000f09f909f4d696e656420627920756e6f00000000000000000000000000000000000000000000000000d0f80100015a7d7995000000001976a914c825a1ecf2a6830c4401620c3a16f1995057c2ab88acdb63af34";
     let transaction_bytes = hex::decode(transaction_hex).unwrap();
     let mut bytes_slice = transaction_bytes.as_slice();
     let version = read_u32(&mut bytes_slice);
     let input_count = read_compact_size(&mut bytes_slice);
+    let mut inputs = vec![];
     for _ in 0..input_count {
         let txid = read_txid(&mut bytes_slice);
         let output_index = read_u32(&mut bytes_slice);
-        let script_size = read_compact_size(&mut bytes_slice);
         let script_sig = read_script(&mut bytes_slice);
         let sequence = read_u32(&mut bytes_slice);
-        println!("sequence: {}", sequence)
+        let input = Input {
+            txid,
+            output_index,
+            script_sig,
+            sequence
+        };
+        inputs.push(input);
     }
+    println!("inputs: {:?}", inputs);
     println!("Version: {}, compact size: {}", version, input_count)
 }
 
