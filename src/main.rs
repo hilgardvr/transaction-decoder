@@ -1,23 +1,57 @@
-use std::io::Read;
-use std::fmt;
+use std::{io::Read};
+// use std::fmt;
+use serde::{Serialize, Serializer};
 
+#[derive(Debug, Serialize)]
 struct Input {
-    txid: [u8; 32],
+    txid: String, //[u8; 32],
     output_index: u32,
-    script_sig: Vec<u8>,
+    script_sig: String, //Vec<u8>,
     sequence: u32
 }
 
-impl fmt::Debug for Input {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Input")
-        .field("txid", &self.txid)
-        .field("output_index", &self.output_index)
-        .field("script_sig", &self.script_sig)
-        .field("sequence", &self.sequence)
-        .finish()
+#[derive(Debug, Serialize)]
+struct Transaction {
+    version: u32, 
+    inputs: Vec<Input>,
+    outputs: Vec<Output>
+}
+
+#[derive(Debug, Serialize)]
+struct Output {
+    #[serde(serialize_with = "as_btc")]
+    amount: Amount,
+    script_pubkey: String,
+}
+
+fn as_btc<S: Serializer, T: BitcoinValue>(t: &T, s: S) -> Result<S::Ok, S::Error> {
+    let btc = t.to_btc();
+    s.serialize_f64(btc)
+}
+
+trait BitcoinValue {
+    fn to_btc(&self) -> f64;
+}
+
+#[derive(Debug)]
+struct Amount(u64);
+
+impl BitcoinValue for Amount {
+    fn to_btc(&self) -> f64 {
+        self.0 as f64 / 100_000_000.0
     }
 }
+
+//impl fmt::Debug for Input {
+//    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//        f.debug_struct("Input")
+//        .field("txid", &self.txid)
+//        .field("output_index", &self.output_index)
+//        .field("script_sig", &self.script_sig)
+//        .field("sequence", &self.sequence)
+//        .finish()
+//    }
+//}
 
 fn read_compact_size(transaction_bytes: &mut &[u8]) -> u64 {
     let mut compact_size = [0_u8; 1];
@@ -42,24 +76,43 @@ fn read_compact_size(transaction_bytes: &mut &[u8]) -> u64 {
     }
 }
 
+fn read_amout(transaction_bytes: &mut &[u8]) -> Amount {
+    let mut buffer = [0; 8];
+    transaction_bytes.read(&mut buffer).unwrap();
+    Amount(u64::from_le_bytes(buffer))
+}
+
 fn read_u32(transaction_bytes: &mut &[u8]) -> u32 {
     let mut buffer = [0_u8; 4];
     transaction_bytes.read(&mut buffer).unwrap();
     u32::from_le_bytes(buffer)
 }
 
-fn read_txid(transaction_bytes: &mut &[u8]) -> [u8; 32] {
+// fn read_txid(transaction_bytes: &mut &[u8]) -> [u8; 32] {
+//     let mut buffer = [0; 32];
+//     transaction_bytes.read(&mut buffer).unwrap();
+//     buffer.reverse();
+//     buffer
+// }
+
+fn read_txid(transaction_bytes: &mut &[u8]) -> String {
     let mut buffer = [0; 32];
     transaction_bytes.read(&mut buffer).unwrap();
     buffer.reverse();
-    buffer
+    hex::encode(buffer)
 }
+// fn read_script(transaction_bytes: &mut &[u8]) -> Vec<u8> {
+//     let script_size = read_compact_size(transaction_bytes);
+//     let mut buffer = vec![0_u8; script_size as usize];
+//     transaction_bytes.read(&mut buffer).unwrap();
+//     buffer
+// }
 
-fn read_script(transaction_bytes: &mut &[u8]) -> Vec<u8> {
+fn read_script(transaction_bytes: &mut &[u8]) -> String {
     let script_size = read_compact_size(transaction_bytes);
     let mut buffer = vec![0_u8; script_size as usize];
     transaction_bytes.read(&mut buffer).unwrap();
-    buffer
+    hex::encode(buffer)
 }
 
 fn main() {
@@ -82,8 +135,20 @@ fn main() {
         };
         inputs.push(input);
     }
-    println!("inputs: {:?}", inputs);
-    println!("Version: {}, compact size: {}", version, input_count)
+    let output_count = read_compact_size(&mut bytes_slice);
+    let mut outputs = vec![]; 
+    for _ in 0..output_count {
+        let amount = read_amout(&mut bytes_slice);
+        let script_pubkey = read_script(&mut bytes_slice);
+        outputs.push(Output { amount, script_pubkey });
+    }
+    let transaction = Transaction {
+        version: version,
+        inputs: inputs,
+        outputs: outputs
+    };
+    let json_inputs = serde_json::to_string_pretty(&transaction).unwrap();
+    println!("transaction: {}", json_inputs)
 }
 
 #[cfg(test)]
