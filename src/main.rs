@@ -1,4 +1,4 @@
-use std::{fmt::format, io::{Error as ioError, Read}};
+use std::{io::{Error as ioError, Read}};
 use sha2::{digest::Digest, Sha256};
 use transaction::{Amount, Input, Output, Transaction, Txid};
 use std::error::Error;
@@ -11,17 +11,17 @@ fn read_compact_size(transaction_bytes: &mut &[u8]) -> Result<u64, ioError> {
         0..=252 => Ok(compact_size[0] as u64),
         253 => {
             let mut buffer = [0; 2];
-            transaction_bytes.read(&mut buffer).unwrap();
+            transaction_bytes.read(&mut buffer)?;
             Ok(u16::from_le_bytes(buffer) as u64)
         }, 
         254 => {
             let mut buffer = [0; 4];
-            transaction_bytes.read(&mut buffer).unwrap();
+            transaction_bytes.read(&mut buffer)?;
             Ok(u32::from_le_bytes(buffer) as u64)
         },
         255 => {
             let mut buffer = [0; 8];
-            transaction_bytes.read(&mut buffer).unwrap();
+            transaction_bytes.read(&mut buffer)?;
             Ok(u64::from_le_bytes(buffer))
         }
     }
@@ -48,7 +48,7 @@ fn read_txid(transaction_bytes: &mut &[u8]) -> Result<Txid, ioError> {
 fn read_script(transaction_bytes: &mut &[u8]) -> Result<String, ioError> {
     let script_size = read_compact_size(transaction_bytes)?;
     let mut buffer = vec![0_u8; script_size as usize];
-    transaction_bytes.read(&mut buffer).unwrap();
+    transaction_bytes.read(&mut buffer)?;
     Ok(hex::encode(buffer))
 }
 
