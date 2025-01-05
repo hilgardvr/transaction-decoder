@@ -3,7 +3,7 @@ use serde::{Serialize, Serializer};
 #[derive(Debug, Serialize)]
 pub struct Input {
     pub txid: Txid,
-    pub output_index: u32,
+    pub vout: u32,
     pub script_sig: String, //Vec<u8>,
     pub sequence: u32
 }
