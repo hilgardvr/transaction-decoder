@@ -1,4 +1,5 @@
 {
+  "transaction_id": "3c1804567a336c3944e30b3c2593970bfcbf5b15a40f4fc6b626a360ee0507f2",
   "version": 1,
   "inputs": [
     {
@@ -24,6 +25,5 @@
       "script_pubkey": "a91476c0c8f2fc403c5edaea365f6a284317b9cdf72587"
     }
   ],
-  "lock_time": 0,
-  "transaction_id": "3c1804567a336c3944e30b3c2593970bfcbf5b15a40f4fc6b626a360ee0507f2"
+  "lock_time": 0
 }
